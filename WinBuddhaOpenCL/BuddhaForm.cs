@@ -59,8 +59,8 @@ namespace WinBuddhaOpenCL
 
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
-                pixelBuffer[i] = (uint)((float)pixelBuffer[i] / (maxfound + 1) * 255.0);
-                int color = (int)pixelBuffer[i];
+                pixelBuffer[i] = (uint)((float)(pixelBuffer[i]) / (maxfound + 1) * 255.0);
+                int color = (int)(pixelBuffer[i]);
                 buffer[i] = (((color & 0xFF) << 16) | ((color & 0xFF) << 8) | (color & 0xFF));
             }
             Marshal.Copy(buffer, 0, Locked.Scan0, buffer.Length);

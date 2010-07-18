@@ -164,10 +164,9 @@ __kernel void xorshift(
         public ComputeBuffer<uint>  d_outputBuffer;
 
         public uint[] h_outputBuffer;
-        public float[] h_randomX, h_randomY;
-        GCHandle gc_outputBuffer, gc_randomX, gc_randomY;
+        GCHandle gc_outputBuffer;
 
-        static int workSize = 1000;
+        static int workSize = 2000;
 
         uint seed1;
         uint seed2;
@@ -190,31 +189,24 @@ __kernel void xorshift(
             clEvents = new ComputeEventList();
             clProgram = new ComputeProgram(clContext, new string[] { kernelSource });
 
-            
-
             R = new Random();
             seed1 = 123456789;
             seed2 = 362436069;
             seed3 = 521288629;
             seed4 = 88675123;
 
-            realMin = -2.25f;
+            realMin = -1.5f;
             realMax = 0.75f;
             imaginaryMin = -1.5f;
             imaginaryMax = 1.5f;
-            minIter = 100;
-            maxIter = 1000;
-            width = 600;
-            height = 600;
+            minIter = 50;
+            maxIter = 500;
+            width = 700;
+            height = 700;
             escapeOrbit = 4.0f;
             h_outputBuffer = new uint[width * height];
             gc_outputBuffer = GCHandle.Alloc(h_outputBuffer, GCHandleType.Pinned);
 
-            h_randomX = new float[workSize];
-            gc_randomX = GCHandle.Alloc(h_randomX, GCHandleType.Pinned);
-
-            h_randomY = new float[workSize];
-            gc_randomY = GCHandle.Alloc(h_randomY, GCHandleType.Pinned);
         }
 
         public void BuildKernels()
@@ -233,17 +225,6 @@ __kernel void xorshift(
 
         public void ConfigureKernel()
         {
-            /*__kernel void xorshift(
-            uint s1,
-            uint s2,
-            uint s3,
-            uint s4,
-            const int bufferSize,
-            __global float* randomXBuffer
-            __global float* randomYBuffer
-            )
-            */
-
             clKernel_xorshift.SetValueArgument<uint>(0, seed1);
             clKernel_xorshift.SetValueArgument<uint>(1, seed2);
             clKernel_xorshift.SetValueArgument<uint>(2, seed3);
@@ -252,20 +233,6 @@ __kernel void xorshift(
             clKernel_xorshift.SetMemoryArgument(5, d_randomXBuffer);
             clKernel_xorshift.SetMemoryArgument(6, d_randomYBuffer);
 
-            /*
-            __kernel void buddhabrot(
-            const float realMin,
-            const float realMax,
-            const float imaginaryMin,
-            const float imaginaryMax,
-            const uint  minIter,
-            const uint  maxIter,
-            const uint  width,
-            const uint  height,
-            const float  escapeOrbit,
-            __global float* randomXBuffer,
-            __global float* randomYBuffer,
-            __global uint*  outputBuffer            */
             clKernel_buddhabrot.SetValueArgument<float>(0, realMin);
             clKernel_buddhabrot.SetValueArgument<float>(1, realMax);
             clKernel_buddhabrot.SetValueArgument<float>(2, imaginaryMin);
@@ -280,18 +247,10 @@ __kernel void xorshift(
             clKernel_buddhabrot.SetMemoryArgument(11, d_outputBuffer);
         }
 
+
         public void ExecuteKernel_xorshift()
         {
             R = new Random();
-            //for (int i = 0; i < workSize; i++)
-            //{
-            //    h_randomX[i] = (float)R.Next() / int.MaxValue;
-            //    h_randomY[i] = (float)R.Next() / int.MaxValue;
-            //}
-            //clCommands.Write<float>(d_randomXBuffer, h_randomX, clEvents);
-            //clCommands.Write<float>(d_randomYBuffer, h_randomY, clEvents);
-            //clCommands.Finish();
-
             clKernel_xorshift.SetValueArgument<uint>(0, (uint)R.Next(1,int.MaxValue));
             clKernel_xorshift.SetValueArgument<uint>(1, (uint)R.Next(1,int.MaxValue));
             clKernel_xorshift.SetValueArgument<uint>(2, (uint)R.Next(1,int.MaxValue));
@@ -302,22 +261,13 @@ __kernel void xorshift(
         public void ExecuteKernel_buddhabrot()
         {
             clCommands.Execute(clKernel_buddhabrot, null, new long[] { workSize, workSize }, null, clEvents);
-            //clCommands.Finish();
         }
 
 
         public void ReadResult()
         {
-            clCommands.Read(d_randomXBuffer, false, 0, workSize, gc_randomX.AddrOfPinnedObject(), clEvents);
-            clCommands.Read(d_randomYBuffer, false, 0, workSize, gc_randomY.AddrOfPinnedObject(), clEvents);
             clCommands.Read(d_outputBuffer, true, 0, width * height, gc_outputBuffer.AddrOfPinnedObject(), clEvents);
             clCommands.Finish();
-
-            //for (int i = 0; i < workSize; i++)
-            //{
-            //    if(h_randomX[i] != (uint)0)  Console.WriteLine( (realMin +  h_randomX[i] * (realMax - realMin)));
-            //}
-
         }
 
     }
