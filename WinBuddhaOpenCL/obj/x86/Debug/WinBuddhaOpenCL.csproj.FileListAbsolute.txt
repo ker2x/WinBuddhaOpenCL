@@ -1,0 +1,7 @@
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\obj\x86\Debug\ResolveAssemblyReference.cache
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\bin\Debug\WinBuddhaOpenCL.exe
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\bin\Debug\WinBuddhaOpenCL.pdb
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\bin\Debug\Cloo.dll
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\bin\Debug\Cloo.xml
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\obj\x86\Debug\WinBuddhaOpenCL.exe
+D:\projets\visualstudio2010\csharp\WinBuddhaOpenCL\WinBuddhaOpenCL\obj\x86\Debug\WinBuddhaOpenCL.pdb
