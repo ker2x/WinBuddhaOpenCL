@@ -17,6 +17,9 @@ namespace WinBuddhaOpenCL
         Bitmap backBuffer;
         uint[] pixelBuffer;
 
+        DateTime oldDate, currentDate;
+        TimeSpan timeInterval;
+
         public BuddhaForm()
         {
             buddhaCloo = new BuddhaCloo();
@@ -31,9 +34,7 @@ namespace WinBuddhaOpenCL
             buddhaCloo.BuildKernels();
             buddhaCloo.AllocateBuffers();
             buddhaCloo.ConfigureKernel();
-            buddhaCloo.ExecuteKernel_xorshift();
-            buddhaCloo.ExecuteKernel_buddhabrot();
-            buddhaCloo.ReadResult();
+            oldDate = DateTime.Now;
         }
 
         protected override void OnPaint(PaintEventArgs e)
@@ -41,13 +42,18 @@ namespace WinBuddhaOpenCL
             buddhaCloo.ExecuteKernel_xorshift();
             buddhaCloo.ExecuteKernel_buddhabrot();
             buddhaCloo.ReadResult();
+
+            currentDate = DateTime.Now;
+            timeInterval = currentDate - oldDate;
+            oldDate = currentDate;
+            Console.WriteLine("{0} samples/s at {1} iterations", (uint)(BuddhaCloo.workSize*BuddhaCloo.workSize / ((timeInterval.Seconds*1000 + timeInterval.Milliseconds)/1000.0)), buddhaCloo.maxIter );
+
             int maxfound = 0;
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
                 pixelBuffer[i] += buddhaCloo.h_outputBuffer[i];
                 if (pixelBuffer[i] > maxfound) { maxfound = (int)pixelBuffer[i]; }
             }
-            Console.WriteLine(maxfound);
 
             BitmapData Locked = backBuffer.LockBits(
                 new Rectangle(0, 0, buddhaCloo.width, buddhaCloo.height),
