@@ -30,7 +30,6 @@ namespace WinBuddhaOpenCL
             backBuffer = new Bitmap(buddhaCloo.width, buddhaCloo.height);
             this.BackgroundImage = backBuffer;
 
-            //pixelBuffer = new uint[buddhaCloo.width * buddhaCloo.height];
             buffer = new int[buddhaCloo.width * buddhaCloo.height];
 
             buddhaCloo.BuildKernels();
@@ -48,7 +47,10 @@ namespace WinBuddhaOpenCL
             currentDate = DateTime.Now;
             timeInterval = currentDate - oldDate;
             oldDate = currentDate;
-            Console.WriteLine("{0} samples/s at {1} iterations", (uint)(BuddhaCloo.workSize*BuddhaCloo.workSize / ((timeInterval.Seconds*1000 + timeInterval.Milliseconds)/1000.0)), buddhaCloo.maxIter );
+            Console.WriteLine(
+                "{0} samples/s at {1} iterations", 
+                (uint)(BuddhaCloo.workSize*BuddhaCloo.workSize / ((timeInterval.Seconds*1000 + timeInterval.Milliseconds)/1000.0)), 
+                buddhaCloo.maxIter);
 
             int maxfound = 0;
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
@@ -82,6 +84,9 @@ namespace WinBuddhaOpenCL
 
         protected override void OnKeyDown(KeyEventArgs e)
         {
+            if (e.KeyCode == Keys.Escape)
+                Application.Exit();
+
             base.OnKeyDown(e);
         }
     
