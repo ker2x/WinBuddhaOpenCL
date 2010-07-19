@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text;
-
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 using Cloo;
@@ -18,8 +17,7 @@ bool isInMSet(
     float cr,
     float ci,
     uint maxIter,
-    float escapeOrbit
-)
+    float escapeOrbit)
 {
     int iter = 0;
     float zr = 0.0;
@@ -83,6 +81,7 @@ __kernel void buddhabrot(
     float cr = realMin + randomXBuffer[xId] * deltaReal ;
     float ci = imaginaryMin + randomYBuffer[yId] * deltaImaginary ;
 
+    int x, y;
     int iter   = 0;
     float zr   = 0.0;
     float zi   = 0.0;
@@ -90,7 +89,6 @@ __kernel void buddhabrot(
     float zi2  = 0.0;
     float temp = 0.0;
 
-    int x,y;
 
     if( isInMSet(cr,ci, maxIter, escapeOrbit) == false)
     {    
@@ -108,8 +106,6 @@ __kernel void buddhabrot(
             if( (x>0) && (y>0) && (x<width) && (y<height) && (iter > minIter))
             {
                 outputBuffer[x + (y * width)] += 1;
-                //outputBuffer[(y * width) + x] = 10;
-
             }
             iter++;
         }
@@ -136,26 +132,25 @@ __kernel void xorshift(
         s3 = s4;
         s4 = s4 ^ (s4 >> 19) ^ ( st ^ (st >> 18));
         randomXBuffer[i] = s4 / 4294967295.0; 
+
         st = s1 ^ (s1 << 11);
         s1 = s2;
         s2 = s3;
         s3 = s4;
         s4 = s4 ^ (s4 >> 19) ^ ( st ^ (st >> 18));
         randomYBuffer[i] = s4 / 4294967295.0; 
-
     }
 }
-
 
 ";
 
         //Cloo
-        public ComputePlatform clPlatform;
-        public ComputeContext clContext;
+        public ComputePlatform  clPlatform;
+        public ComputeContext   clContext;
         public ComputeContextPropertyList clProperties;
-        public ComputeKernel clKernel_buddhabrot;
-        public ComputeKernel clKernel_xorshift;
-        public ComputeProgram clProgram;
+        public ComputeKernel    clKernel_buddhabrot;
+        public ComputeKernel    clKernel_xorshift;
+        public ComputeProgram   clProgram;
         public ComputeCommandQueue clCommands;
         public ComputeEventList clEvents;
 
@@ -164,21 +159,20 @@ __kernel void xorshift(
         public ComputeBuffer<uint>  d_outputBuffer;
 
         public uint[] h_outputBuffer;
-        GCHandle gc_outputBuffer;
 
-        static int workSize = 2000;
+        public static int workSize = 1024;
 
-        uint seed1;
-        uint seed2;
-        uint seed3;
-        uint seed4;
-        Random R;
+        private uint seed1;
+        private uint seed2;
+        private uint seed3;
+        private uint seed4;
+        private GCHandle gc_outputBuffer;
+
+        private Random R;
 
         //fractal
-        float realMin, realMax, imaginaryMin, imaginaryMax, escapeOrbit;
+        public float realMin, realMax, imaginaryMin, imaginaryMax, escapeOrbit;
         public int minIter, maxIter, width, height;
-
-
 
         public BuddhaCloo()
         {
@@ -190,20 +184,30 @@ __kernel void xorshift(
             clProgram = new ComputeProgram(clContext, new string[] { kernelSource });
 
             R = new Random();
-            seed1 = 123456789;
-            seed2 = 362436069;
-            seed3 = 521288629;
-            seed4 = 88675123;
+            seed1 = (uint)R.Next();
+            seed2 = (uint)R.Next();
+            seed3 = (uint)R.Next();
+            seed4 = (uint)R.Next();
+
+            /* //Default buddhabrot parameters
+             * realMin = -1.5f;
+             * realMax = 0.75f;
+             * imaginaryMin = -1.5f;
+             * imaginaryMax = 1.5f;
+             */
 
             realMin = -1.5f;
             realMax = 0.75f;
             imaginaryMin = -1.5f;
             imaginaryMax = 1.5f;
+
             minIter = 50;
             maxIter = 500;
+            escapeOrbit = 4.0f;
+
             width = 700;
             height = 700;
-            escapeOrbit = 4.0f;
+
             h_outputBuffer = new uint[width * height];
             gc_outputBuffer = GCHandle.Alloc(h_outputBuffer, GCHandleType.Pinned);
 
