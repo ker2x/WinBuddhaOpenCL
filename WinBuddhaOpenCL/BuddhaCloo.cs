@@ -33,7 +33,7 @@ bool isInMSet(
 
     //Quick rejection check if c is in main cardioid
     float q = (cr-0.25)*(cr-0.25) + ci2;
-    if(q*(q+(cr-0.25)) < 0.25*ci2) return true;
+    if( q*(q+(cr-0.25)) < 0.25*ci2) return true;
 
     while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
     {
@@ -70,7 +70,7 @@ __kernel void buddhabrot(
     const uint4 maxColor,
     __global float* randomXBuffer,
     __global float* randomYBuffer,
-    __global uint*  outputBuffer)
+    __global uint4*  outputBuffer)
 {
     const int xId = get_global_id(0);
     const int yId = get_global_id(1);
@@ -105,7 +105,9 @@ __kernel void buddhabrot(
 
             if( (x>0) && (y>0) && (x<width) && (y<height) && (iter > minIter))
             {
-                outputBuffer[x + (y * width)] += 1;
+                if( (iter > minColor.x) && (iter < maxColor.x) ) outputBuffer[x + (y * width)].x += 1;
+                if( (iter > minColor.y) && (iter < maxColor.y) ) outputBuffer[x + (y * width)].y += 1;
+                if( (iter > minColor.z) && (iter < maxColor.z) ) outputBuffer[x + (y * width)].z += 1;
             }
             iter++;
         }
@@ -144,6 +146,14 @@ __kernel void xorshift(
 
 ";
 
+        public struct ColorVectorRGBA
+        {
+            public uint R;
+            public uint G;
+            public uint B;
+            public uint A;
+        };
+
         //Cloo
         public ComputePlatform  clPlatform;
         public ComputeContext   clContext;
@@ -156,9 +166,9 @@ __kernel void xorshift(
 
         public ComputeBuffer<float> d_randomXBuffer;
         public ComputeBuffer<float> d_randomYBuffer;
-        public ComputeBuffer<uint>  d_outputBuffer;
+        public ComputeBuffer<ColorVectorRGBA>  d_outputBuffer;
 
-        public uint[] h_outputBuffer;
+        public ColorVectorRGBA[] h_outputBuffer;
 
         public static int workSize = 1024;
 
@@ -174,13 +184,6 @@ __kernel void xorshift(
         public float realMin, realMax, imaginaryMin, imaginaryMax, escapeOrbit;
         public int minIter, maxIter, width, height;
 
-        public struct ColorVectorRGBA
-        {
-            public uint R;
-            public uint G;
-            public uint B;
-            public uint A;
-        };
 
         ColorVectorRGBA minColor, maxColor;
 
@@ -216,20 +219,20 @@ __kernel void xorshift(
             maxIter = 500;
             escapeOrbit = 4.0f;
 
-            minColor.R = 0;
-            maxColor.R = (uint)maxIter;
+            minColor.R = 50;
+            maxColor.R = 200;
 
-            minColor.G = 0;
-            maxColor.G = (uint)maxIter;
+            minColor.G = 200;
+            maxColor.G = 300;
             
-            minColor.B = 0;
+            minColor.B = 300;
             maxColor.B = (uint)maxIter;
 
 
             width = 700;
             height = 700;
 
-            h_outputBuffer = new uint[width * height];
+            h_outputBuffer = new ColorVectorRGBA[width * height];
             gc_outputBuffer = GCHandle.Alloc(h_outputBuffer, GCHandleType.Pinned);
 
         }
@@ -245,7 +248,7 @@ __kernel void xorshift(
         {
             d_randomXBuffer = new ComputeBuffer<float>(clContext, ComputeMemoryFlags.ReadWrite, workSize);
             d_randomYBuffer = new ComputeBuffer<float>(clContext, ComputeMemoryFlags.ReadWrite, workSize);
-            d_outputBuffer  = new ComputeBuffer<uint>(clContext, ComputeMemoryFlags.ReadWrite, width*height);
+            d_outputBuffer  = new ComputeBuffer<ColorVectorRGBA>(clContext, ComputeMemoryFlags.ReadWrite, width*height);
         }
 
         public void ConfigureKernel()

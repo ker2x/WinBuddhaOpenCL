@@ -16,7 +16,7 @@ namespace WinBuddhaOpenCL
         BuddhaCloo buddhaCloo;
         Bitmap backBuffer;
         int[] buffer;
-        int color;
+        int colorR, colorG, colorB;
 
         DateTime oldDate, currentDate;
         TimeSpan timeInterval;
@@ -53,10 +53,20 @@ namespace WinBuddhaOpenCL
                 buddhaCloo.maxIter);
 
             int maxfound = 0;
+            int maxfoundR = 0;
+            int maxfoundG = 0;
+            int maxfoundB = 0;
+
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
-                if (buddhaCloo.h_outputBuffer[i] > maxfound) { maxfound = (int)buddhaCloo.h_outputBuffer[i]; }
+                if (buddhaCloo.h_outputBuffer[i].R > maxfoundR) { maxfoundR = (int)buddhaCloo.h_outputBuffer[i].R; }
+                if (buddhaCloo.h_outputBuffer[i].G > maxfoundG) { maxfoundG = (int)buddhaCloo.h_outputBuffer[i].G; }
+                if (buddhaCloo.h_outputBuffer[i].B > maxfoundB) { maxfoundB = (int)buddhaCloo.h_outputBuffer[i].B; }
             }
+
+            if (maxfoundR > maxfound) maxfound = maxfoundR;
+            if (maxfoundG > maxfound) maxfound = maxfoundG;
+            if (maxfoundB > maxfound) maxfound = maxfoundB;
 
             BitmapData Locked = backBuffer.LockBits(
                 new Rectangle(0, 0, buddhaCloo.width, buddhaCloo.height),
@@ -67,8 +77,10 @@ namespace WinBuddhaOpenCL
 
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
-                color = (int)((Math.Sqrt(buddhaCloo.h_outputBuffer[i])) / Math.Sqrt(maxfound) * 255.0);
-                buffer[i] = (((color & 0xFF) << 16) | ((color & 0xFF) << 8) | (color & 0xFF));
+                colorR = (int)((Math.Sqrt(buddhaCloo.h_outputBuffer[i].R)) / Math.Sqrt(maxfound) * 255.0);
+                colorG = (int)((Math.Sqrt(buddhaCloo.h_outputBuffer[i].G)) / Math.Sqrt(maxfound) * 255.0);
+                colorB = (int)((Math.Sqrt(buddhaCloo.h_outputBuffer[i].B)) / Math.Sqrt(maxfound) * 255.0);
+                buffer[i] = (((colorR & 0xFF) << 16) | ((colorG & 0xFF) << 8) | (colorB & 0xFF));
             }
             Marshal.Copy(buffer, 0, Locked.Scan0, buffer.Length);
             backBuffer.UnlockBits(Locked);
