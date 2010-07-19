@@ -28,11 +28,12 @@ bool isInMSet(
     float temp;
 
     //Quick rejection check if c is in 2nd order period bulb
-    if( sqrt( ((cr+1.0) * (cr+1.0)) + ci2 ) < 0.25 ) return true;
+    //if( sqrt( ((cr+1.0) * (cr+1.0)) + ci2 ) < 0.25 ) return true;
+    if( (cr+1.0) * (cr+1.0) + ci2 < 0.0625) return true;
 
     //Quick rejection check if c is in main cardioid
     float q = (cr-0.25)*(cr-0.25) + ci2;
-    if(q*(q+(cr-0.25)) > 0.25*ci2) return true;
+    if(q*(q+(cr-0.25)) < 0.25*ci2) return true;
 
     while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
     {
@@ -89,7 +90,7 @@ __kernel void buddhabrot(
     float temp = 0.0;
 
 
-    if( isInMSet(cr,ci, maxIter, escapeOrbit) == true)
+    if( isInMSet(cr,ci, maxIter, escapeOrbit) == false)
     {    
         while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
         {
