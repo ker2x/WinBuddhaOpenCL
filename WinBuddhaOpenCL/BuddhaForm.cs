@@ -15,7 +15,8 @@ namespace WinBuddhaOpenCL
 
         BuddhaCloo buddhaCloo;
         Bitmap backBuffer;
-        uint[] pixelBuffer;
+        int[] buffer;
+        int color;
 
         DateTime oldDate, currentDate;
         TimeSpan timeInterval;
@@ -29,7 +30,8 @@ namespace WinBuddhaOpenCL
             backBuffer = new Bitmap(buddhaCloo.width, buddhaCloo.height);
             this.BackgroundImage = backBuffer;
 
-            pixelBuffer = new uint[buddhaCloo.width * buddhaCloo.height];
+            //pixelBuffer = new uint[buddhaCloo.width * buddhaCloo.height];
+            buffer = new int[buddhaCloo.width * buddhaCloo.height];
 
             buddhaCloo.BuildKernels();
             buddhaCloo.AllocateBuffers();
@@ -51,8 +53,7 @@ namespace WinBuddhaOpenCL
             int maxfound = 0;
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
-                pixelBuffer[i] += buddhaCloo.h_outputBuffer[i];
-                if (pixelBuffer[i] > maxfound) { maxfound = (int)pixelBuffer[i]; }
+                if (buddhaCloo.h_outputBuffer[i] > maxfound) { maxfound = (int)buddhaCloo.h_outputBuffer[i]; }
             }
 
             BitmapData Locked = backBuffer.LockBits(
@@ -60,13 +61,11 @@ namespace WinBuddhaOpenCL
                 ImageLockMode.ReadWrite, PixelFormat.Format32bppRgb
                 );
 
-            int[] buffer = new int[buddhaCloo.width * buddhaCloo.height];
             Marshal.Copy(Locked.Scan0, buffer, 0, buffer.Length);
 
             for (int i = 0; i < buddhaCloo.width * buddhaCloo.height; i++)
             {
-                pixelBuffer[i] = (uint)((float)(pixelBuffer[i]) / (maxfound + 1) * 255.0);
-                int color = (int)(pixelBuffer[i]);
+                color = (int)((Math.Sqrt(buddhaCloo.h_outputBuffer[i])) / Math.Sqrt(maxfound) * 255.0);
                 buffer[i] = (((color & 0xFF) << 16) | ((color & 0xFF) << 8) | (color & 0xFF));
             }
             Marshal.Copy(buffer, 0, Locked.Scan0, buffer.Length);
