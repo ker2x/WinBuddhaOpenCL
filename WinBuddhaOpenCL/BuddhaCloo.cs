@@ -24,19 +24,15 @@ bool isInMSet(
     float zi = 0.0;
     float zr2 = 0.0;
     float zi2 = 0.0;
+    float ci2 = ci*ci;
     float temp;
 
     //Quick rejection check if c is in 2nd order period bulb
-    if( sqrt( ((cr+1.0) * (cr+1.0)) + (ci * ci) ) < 0.25 ) return true;
+    if( sqrt( ((cr+1.0) * (cr+1.0)) + ci2 ) < 0.25 ) return true;
 
     //Quick rejection check if c is in main cardioid
-    float tempi = ci*(-4.0);
-    float tempr = 1.0 - cr*4.0;
-    float theta = atan2(tempi, tempr)/2.0;
-    float r = pow( tempr*tempr + tempi*tempi, 0.25);
-    tempr = 1.0 - r * cos(theta);
-    tempi = -r * sin(theta);
-    if( (tempr * tempr + tempi * tempi) < 1.0) return true;
+    float q = (cr-0.25)*(cr-0.25) + ci2;
+    if(q*(q+(cr-0.25)) > 0.25*ci2) return true;
 
     while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
     {
@@ -54,6 +50,7 @@ bool isInMSet(
     } else {
         return true;
     }
+
 }
 
 
@@ -67,7 +64,9 @@ __kernel void buddhabrot(
     const uint  maxIter,
     const uint  width,
     const uint  height,
-    const float  escapeOrbit,
+    const float escapeOrbit,
+    const uint4 minColor,
+    const uint4 maxColor,
     __global float* randomXBuffer,
     __global float* randomYBuffer,
     __global uint*  outputBuffer)
@@ -90,7 +89,7 @@ __kernel void buddhabrot(
     float temp = 0.0;
 
 
-    if( isInMSet(cr,ci, maxIter, escapeOrbit) == false)
+    if( isInMSet(cr,ci, maxIter, escapeOrbit) == true)
     {    
         while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
         {
@@ -174,6 +173,17 @@ __kernel void xorshift(
         public float realMin, realMax, imaginaryMin, imaginaryMax, escapeOrbit;
         public int minIter, maxIter, width, height;
 
+        public struct ColorVectorRGBA
+        {
+            public uint R;
+            public uint G;
+            public uint B;
+            public uint A;
+        };
+
+        ColorVectorRGBA minColor, maxColor;
+
+
         public BuddhaCloo()
         {
             clPlatform = ComputePlatform.Platforms[0];
@@ -204,6 +214,16 @@ __kernel void xorshift(
             minIter = 50;
             maxIter = 500;
             escapeOrbit = 4.0f;
+
+            minColor.R = 0;
+            maxColor.R = (uint)maxIter;
+
+            minColor.G = 0;
+            maxColor.G = (uint)maxIter;
+            
+            minColor.B = 0;
+            maxColor.B = (uint)maxIter;
+
 
             width = 700;
             height = 700;
@@ -246,19 +266,21 @@ __kernel void xorshift(
             clKernel_buddhabrot.SetValueArgument<uint>(6, (uint)width);
             clKernel_buddhabrot.SetValueArgument<uint>(7, (uint)height);
             clKernel_buddhabrot.SetValueArgument<float>(8, escapeOrbit);
-            clKernel_buddhabrot.SetMemoryArgument(9, d_randomXBuffer);
-            clKernel_buddhabrot.SetMemoryArgument(10, d_randomYBuffer);
-            clKernel_buddhabrot.SetMemoryArgument(11, d_outputBuffer);
+            clKernel_buddhabrot.SetValueArgument<ColorVectorRGBA>(9, minColor);
+            clKernel_buddhabrot.SetValueArgument<ColorVectorRGBA>(10, maxColor);
+            clKernel_buddhabrot.SetMemoryArgument(11, d_randomXBuffer);
+            clKernel_buddhabrot.SetMemoryArgument(12, d_randomYBuffer);
+            clKernel_buddhabrot.SetMemoryArgument(13, d_outputBuffer);
         }
 
 
         public void ExecuteKernel_xorshift()
         {
             R = new Random();
-            clKernel_xorshift.SetValueArgument<uint>(0, (uint)R.Next(1,int.MaxValue));
-            clKernel_xorshift.SetValueArgument<uint>(1, (uint)R.Next(1,int.MaxValue));
-            clKernel_xorshift.SetValueArgument<uint>(2, (uint)R.Next(1,int.MaxValue));
-            clKernel_xorshift.SetValueArgument<uint>(3, (uint)R.Next(1,int.MaxValue));
+            clKernel_xorshift.SetValueArgument<uint>(0, (uint)R.Next());
+            clKernel_xorshift.SetValueArgument<uint>(1, (uint)R.Next());
+            clKernel_xorshift.SetValueArgument<uint>(2, (uint)R.Next());
+            clKernel_xorshift.SetValueArgument<uint>(3, (uint)R.Next());
             clCommands.Execute(clKernel_xorshift, null, new long[] { 1 }, null, clEvents);
         }
 
