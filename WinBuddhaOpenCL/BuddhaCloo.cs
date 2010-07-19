@@ -170,7 +170,7 @@ __kernel void xorshift(
 
         public ColorVectorRGBA[] h_outputBuffer;
 
-        public static int workSize = 1024;
+        public static int workSize = 512;
 
         private uint seed1;
         private uint seed2;
@@ -210,26 +210,26 @@ __kernel void xorshift(
              * imaginaryMax = 1.5f;
              */
 
-            realMin = -1.5f;
-            realMax = 0.75f;
-            imaginaryMin = -1.5f;
-            imaginaryMax = 1.5f;
+            realMin = -1.2f;
+            realMax = -0.8f;
+            imaginaryMin = -0.4f;
+            imaginaryMax = -0.1f;
 
-            minIter = 50;
-            maxIter = 500;
+            minIter = 100;
+            maxIter = 10000;
             escapeOrbit = 4.0f;
 
-            minColor.R = 50;
-            maxColor.R = 200;
+            minColor.R = 100;
+            maxColor.R = 10000;
 
-            minColor.G = 200;
-            maxColor.G = 300;
+            minColor.G = 2000;
+            maxColor.G = 50000;
             
-            minColor.B = 300;
-            maxColor.B = (uint)maxIter;
+            minColor.B = 5000;
+            maxColor.B = 10000;
 
 
-            width = 700;
+            width = 1000;
             height = 700;
 
             h_outputBuffer = new ColorVectorRGBA[width * height];
