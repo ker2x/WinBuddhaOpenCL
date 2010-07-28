@@ -12,12 +12,14 @@ namespace WinBuddhaOpenCL
 
         public static string kernelSource= @"
 
+//#pragma OPENCL EXTENSION cl_khr_global_int32_base_atomics : enable
+
 //Check if choosen point is in MSet
 bool isInMSet(
     float cr,
     float ci,
-    uint maxIter,
-    float escapeOrbit)
+    const uint maxIter,
+    const float escapeOrbit)
 {
     int iter = 0;
     float zr = 0.0;
@@ -28,12 +30,19 @@ bool isInMSet(
     float temp;
 
     //Quick rejection check if c is in 2nd order period bulb
-    //if( sqrt( ((cr+1.0) * (cr+1.0)) + ci2 ) < 0.25 ) return true;
     if( (cr+1.0) * (cr+1.0) + ci2 < 0.0625) return true;
 
     //Quick rejection check if c is in main cardioid
     float q = (cr-0.25)*(cr-0.25) + ci2;
-    if( q*(q+(cr-0.25)) < 0.25*ci2) return true;
+    if( q*(q+(cr-0.25)) < 0.25*ci2) return true; 
+
+
+    // test for the smaller bulb left of the period-2 bulb
+    if (( ((cr+1.309)*(cr+1.309)) + ci*ci) < 0.00345) return true;
+
+    // check for the smaller bulbs on top and bottom of the cardioid
+    if ((((cr+0.125)*(cr+0.125)) + (ci-0.744)*(ci-0.744)) < 0.0088) return true;
+    if ((((cr+0.125)*(cr+0.125)) + (ci+0.744)*(ci+0.744)) < 0.0088) return true;
 
     while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
     {
@@ -68,18 +77,20 @@ __kernel void buddhabrot(
     const float escapeOrbit,
     const uint4 minColor,
     const uint4 maxColor,
-    __global float* randomXBuffer,
-    __global float* randomYBuffer,
+    __global float2* randomXYBuffer,
     __global uint4*  outputBuffer)
 {
-    const int xId = get_global_id(0);
-    const int yId = get_global_id(1);
+    float2 rand = randomXYBuffer[get_global_id(0)];    
 
     const float deltaReal = (realMax - realMin);
     const float deltaImaginary = (imaginaryMax - imaginaryMin);
 
-    float cr = realMin + randomXBuffer[xId] * deltaReal ;
-    float ci = imaginaryMin + randomYBuffer[yId] * deltaImaginary ;
+    //mix(a,b,c) = a + (b-a)*c //(c must be in the range 0.0 ... 1.0
+    //float cr = realMin + rand.x * deltaReal ;
+    //float cr = realMin + (realMax - realMin) * rand.x ;
+    //float ci = imaginaryMin + rand.y * deltaImaginary ;
+    float cr = mix(realMin, realMax, rand.x);
+    float ci = mix(imaginaryMin, imaginaryMax, rand.y);
 
     int x, y;
     int iter   = 0;
@@ -99,15 +110,15 @@ __kernel void buddhabrot(
             zi2 = zi * zi;
             zr = zr2 - zi2 + cr;
             zi = temp + temp + ci;
-            
-            x = ((width) * (zr - realMin) / (realMax - realMin));
-            y = ((height) * (zi - imaginaryMin) / (imaginaryMax - imaginaryMin));
 
-            if( (x>0) && (y>0) && (x<width) && (y<height) && (iter > minIter))
+            x = ((width) * (zr - realMin) / deltaReal);
+            y = ((height) * (zi - imaginaryMin) / deltaImaginary);
+
+            if( (iter > minIter) && (x>0) && (y>0) && (x<width) && (y<height) )
             {
-                if( (iter > minColor.x) && (iter < maxColor.x) ) outputBuffer[x + (y * width)].x += 1;
-                if( (iter > minColor.y) && (iter < maxColor.y) ) outputBuffer[x + (y * width)].y += 1;
-                if( (iter > minColor.z) && (iter < maxColor.z) ) outputBuffer[x + (y * width)].z += 1;
+                if( (iter > minColor.x) && (iter < maxColor.x) ) { outputBuffer[x + (y * width)].x++; }
+                if( (iter > minColor.y) && (iter < maxColor.y) ) { outputBuffer[x + (y * width)].y++; }
+                if( (iter > minColor.z) && (iter < maxColor.z) ) { outputBuffer[x + (y * width)].z++; }
             }
             iter++;
         }
@@ -120,11 +131,11 @@ __kernel void xorshift(
     uint s3,
     uint s4,
     const int bufferSize,
-    __global float* randomXBuffer,
-    __global float* randomYBuffer
+    __global float2* randomXYBuffer
 )
 {
     uint st;
+    float2 tmp;
 
     for(int i=0; i < bufferSize; i++)
     {
@@ -133,14 +144,16 @@ __kernel void xorshift(
         s2 = s3;
         s3 = s4;
         s4 = s4 ^ (s4 >> 19) ^ ( st ^ (st >> 18));
-        randomXBuffer[i] = s4 / 4294967295.0; 
+        tmp.x = (float)s4 / UINT_MAX;
 
         st = s1 ^ (s1 << 11);
         s1 = s2;
         s2 = s3;
         s3 = s4;
         s4 = s4 ^ (s4 >> 19) ^ ( st ^ (st >> 18));
-        randomYBuffer[i] = s4 / 4294967295.0; 
+        tmp.y = (float)s4 / UINT_MAX;
+        randomXYBuffer[i] = tmp;
+
     }
 }
 
@@ -154,6 +167,13 @@ __kernel void xorshift(
             public uint A;
         };
 
+        public struct VectorFloatXY
+        {
+            public uint X;
+            public uint Y;
+        };
+
+
         //Cloo
         public ComputePlatform  clPlatform;
         public ComputeContext   clContext;
@@ -164,13 +184,12 @@ __kernel void xorshift(
         public ComputeCommandQueue clCommands;
         public ComputeEventList clEvents;
 
-        public ComputeBuffer<float> d_randomXBuffer;
-        public ComputeBuffer<float> d_randomYBuffer;
+        public ComputeBuffer<VectorFloatXY> d_randomXYbuffer;
         public ComputeBuffer<ColorVectorRGBA>  d_outputBuffer;
 
         public ColorVectorRGBA[] h_outputBuffer;
 
-        public static int workSize = 512;
+        public static int workSize = 1000000;
 
         private uint seed1;
         private uint seed2;
@@ -210,24 +229,47 @@ __kernel void xorshift(
              * imaginaryMax = 1.5f;
              */
 
-            realMin = -1.2f;
-            realMax = -0.8f;
-            imaginaryMin = -0.4f;
-            imaginaryMax = -0.1f;
+            /*
+            realMin = -1.05f;
+            realMax = -0.9f;
+            imaginaryMin = -0.3f;
+            imaginaryMax = -0.225f;
 
-            minIter = 100;
-            maxIter = 10000;
+            minIter = 20000;
+            maxIter = 200000;
             escapeOrbit = 4.0f;
 
-            minColor.R = 100;
-            maxColor.R = 10000;
+            minColor.R = 20000;
+            maxColor.R = 60000;
 
-            minColor.G = 2000;
-            maxColor.G = 50000;
+            minColor.G = 60000;
+            maxColor.G = 100000;
             
-            minColor.B = 5000;
-            maxColor.B = 10000;
+            minColor.B = 100000;
+            maxColor.B = 200000;
+*/
 
+            realMin = -1.22f;
+            realMax = -1.0f;
+            imaginaryMin = 0.16f;
+            imaginaryMax = 0.32f;
+            //realMin = -1.5f;
+            //realMax = 0.75f;
+            //imaginaryMin = -1.5f;
+            //imaginaryMax = 1.5f;
+
+            minIter =20;
+            maxIter = 1600;
+            escapeOrbit = 4.0f;
+
+            minColor.R = 20;
+            maxColor.R = 400;
+
+            minColor.G = 400;
+            maxColor.G = 800;
+
+            minColor.B = 800;
+            maxColor.B = 1600;
 
             width = 1000;
             height = 700;
@@ -246,8 +288,7 @@ __kernel void xorshift(
 
         public void AllocateBuffers()
         {
-            d_randomXBuffer = new ComputeBuffer<float>(clContext, ComputeMemoryFlags.ReadWrite, workSize);
-            d_randomYBuffer = new ComputeBuffer<float>(clContext, ComputeMemoryFlags.ReadWrite, workSize);
+            d_randomXYbuffer = new ComputeBuffer<VectorFloatXY>(clContext, ComputeMemoryFlags.ReadWrite, workSize);
             d_outputBuffer  = new ComputeBuffer<ColorVectorRGBA>(clContext, ComputeMemoryFlags.ReadWrite, width*height);
         }
 
@@ -258,8 +299,8 @@ __kernel void xorshift(
             clKernel_xorshift.SetValueArgument<uint>(2, seed3);
             clKernel_xorshift.SetValueArgument<uint>(3, seed4);
             clKernel_xorshift.SetValueArgument<int>(4, workSize);
-            clKernel_xorshift.SetMemoryArgument(5, d_randomXBuffer);
-            clKernel_xorshift.SetMemoryArgument(6, d_randomYBuffer);
+            clKernel_xorshift.SetMemoryArgument(5, d_randomXYbuffer);
+
 
             clKernel_buddhabrot.SetValueArgument<float>(0, realMin);
             clKernel_buddhabrot.SetValueArgument<float>(1, realMax);
@@ -272,9 +313,8 @@ __kernel void xorshift(
             clKernel_buddhabrot.SetValueArgument<float>(8, escapeOrbit);
             clKernel_buddhabrot.SetValueArgument<ColorVectorRGBA>(9, minColor);
             clKernel_buddhabrot.SetValueArgument<ColorVectorRGBA>(10, maxColor);
-            clKernel_buddhabrot.SetMemoryArgument(11, d_randomXBuffer);
-            clKernel_buddhabrot.SetMemoryArgument(12, d_randomYBuffer);
-            clKernel_buddhabrot.SetMemoryArgument(13, d_outputBuffer);
+            clKernel_buddhabrot.SetMemoryArgument(11, d_randomXYbuffer);
+            clKernel_buddhabrot.SetMemoryArgument(12, d_outputBuffer);
         }
 
 
@@ -290,7 +330,7 @@ __kernel void xorshift(
 
         public void ExecuteKernel_buddhabrot()
         {
-            clCommands.Execute(clKernel_buddhabrot, null, new long[] { workSize, workSize }, null, clEvents);
+            clCommands.Execute(clKernel_buddhabrot, null, new long[] { workSize }, null, clEvents);
         }
 
 
