@@ -24,8 +24,6 @@ bool isInMSet(
     int iter = 0;
     float zr = 0.0;
     float zi = 0.0;
-    float zr2 = 0.0;
-    float zi2 = 0.0;
     float ci2 = ci*ci;
     float temp;
 
@@ -44,12 +42,10 @@ bool isInMSet(
     if ((((cr+0.125)*(cr+0.125)) + (ci-0.744)*(ci-0.744)) < 0.0088) return true;
     if ((((cr+0.125)*(cr+0.125)) + (ci+0.744)*(ci+0.744)) < 0.0088) return true;
 
-    while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
+    while( (iter < maxIter) && ((zr*zr+zi*zi) < escapeOrbit) )
     {
         temp = zr * zi;
-        zr2 = zr * zr;
-        zi2 = zi * zi;
-        zr = zr2 - zi2 + cr;
+        zr = zr*zr - zi*zi + cr;
         zi = temp + temp + ci;
         iter++;
     }
@@ -96,19 +92,15 @@ __kernel void buddhabrot(
     int iter   = 0;
     float zr   = 0.0;
     float zi   = 0.0;
-    float zr2  = 0.0;
-    float zi2  = 0.0;
     float temp = 0.0;
 
 
     if( isInMSet(cr,ci, maxIter, escapeOrbit) == false)
     {    
-        while( (iter < maxIter) && ((zr2+zi2) < escapeOrbit) )
+        while( (iter < maxIter) && ((zr*zr+zi*zi) < escapeOrbit) )
         {
             temp = zr * zi;
-            zr2 = zr * zr;
-            zi2 = zi * zi;
-            zr = zr2 - zi2 + cr;
+            zr = zr*zr - zi*zi + cr;
             zi = temp + temp + ci;
 
             x = ((width) * (zr - realMin) / deltaReal);
